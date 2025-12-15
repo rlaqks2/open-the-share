@@ -57,16 +57,27 @@ export const fetchContent = async () => {
             return mockData;
         }
 
-        const response = await fetch(`${API_BASE_URL}/content`, {
-            signal: AbortSignal.timeout(3000) // 3 second timeout
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-        const result: ApiResponse<any> = await response.json();
+        try {
+            const response = await fetch(`${API_BASE_URL}/content`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
 
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || 'Network response was not ok');
+            const result: ApiResponse<any> = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Network response was not ok');
+            }
+            return result.data;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
         }
-        return result.data;
+
+
     } catch (error) {
         console.warn('Backend unavailable, using mock data:', error);
         // Fallback to mock data when backend is not available
